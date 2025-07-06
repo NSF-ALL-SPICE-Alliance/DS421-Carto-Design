@@ -47,4 +47,6 @@ To get started, follow this setup guide to install:
 
 This repository will house:
 
-- 📁 Weekly exercises & l
+- Notebooks to follow along in class
+- Any datasets necessary for class
+- Course schedule
