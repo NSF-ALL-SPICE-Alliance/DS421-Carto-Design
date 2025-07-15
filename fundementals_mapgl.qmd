@@ -1,0 +1,393 @@
+---
+title: "🗺️ Fundamentals of Map Design with `mapgl`"
+author: "DS 421 – Cartographic Design"
+date: "2025"
+format:
+  html:
+    toc: true
+    code-fold: true
+    theme: minty
+    css: styles.css
+    self-contained: false
+execute:
+  eval: false  # prevent chunk execution on render
+---
+
+Welcome to your first creative exploration of **map design using R and the `mapgl` package**! In this tutorial, you'll:
+
+-   Load spatial data using `tidycensus`
+-   Create your first interactive maps with `mapgl`
+-   Learn both **continuous** and **categorical** styling methods
+-   Add interactivity like **tooltips** and **hover effects**
+
+Let’s dive in!
+
+------------------------------------------------------------------------
+
+## 📦 Getting Started
+
+Make sure you’ve installed the required packages:
+
+Load libraries:
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(mapgl)
+library(viridisLite)
+library(RColorBrewer)
+library(glue)
+```
+
+------------------------------------------------------------------------
+
+## 🧭 Load Hawaii Median House Hold Income Data
+
+To create a meaningful map, we need **geospatial data** — data that includes both attributes (e.g. median age) and geometry (e.g. Census tract boundaries).
+
+The `tidycensus` package allows us to pull **American Community Survey (ACS)** data directly from the U.S. Census Bureau. When you use `geometry = TRUE`, you’re telling R to return spatial features (polygons, points, or lines) alongside the statistics.
+
+Let’s look at what we’re loading:
+
+```{r}
+hi_median_income <- get_acs(
+  geography = "tract",
+  variables = "B19013_001",  # median income
+  state = "HI",
+  year = 2023,
+  geometry = TRUE
+)
+
+```
+
+### 👀 Explore the Data in the Viewer
+
+Click on `hi_median_income` in your **Environment tab** or run `View(hi_median_income)` to open it as a spreadsheet.
+
+Notice: - The `estimate` column shows the median age - The `geometry` column contains spatial polygons (`MULTIPOLYGON`) - This is an **`sf` object**, which stands for *Simple Features* — this is what makes the data "mappable" in R
+
+> ✅ If your data has a `geometry` column and `sf` class, it’s ready for cartographic visualization!
+
+> ✅ Now lets plot an interactive map centered on Hawaii
+
+------------------------------------------------------------------------
+
+### Draw a blank map of Hawaii
+
+```{r}
+hi_map <- mapboxgl(mapbox_style("light"), bounds = hi_median_income)
+
+hi_map
+```
+
+## 🎨 Continuous Styling
+
+One of the most important choices in cartographic design is **how to represent your data visually** — especially when it comes to **color**. Should you show your data as a **smooth gradient** or in **distinct categories**? That choice sends a message.
+
+**Continuous color scales** use gradients to show smooth variation in a numeric variable — like temperature, elevation, or median age. These are great when:
+
+-   You want to emphasize gradual change
+-   The viewer should see subtle differences between areas
+-   You want the map to feel intuitive and data-rich
+
+For example, a continuous palette of deep blue to light blue can subtly show where the median income is lower vs. higher — without imposing artificial boundaries.
+
+When designing with continuous color, think of it like painting with light: smooth tones invite exploration, nuance, and *feel* more natural.
+
+Here’s how we apply a continuous color scale to median income:
+
+```{r}
+continuous_scale <- interpolate_palette(
+  data = hi_median_income,
+  column = "estimate",
+  method = "equal",
+  n = 5,
+  palette = viridis
+)
+
+hi_map |>
+  add_fill_layer(
+    id = "hi_tracts",
+    source = hi_median_income,
+    fill_color = continuous_scale$expression,
+    fill_opacity = 0.5
+  ) |>
+  add_legend(
+    "Median Income in Hawaii",
+    values = get_legend_labels(continuous_scale, digits = 0),
+    colors = get_legend_colors(continuous_scale),
+    type = "continuous"
+  )
+```
+
+------------------------------------------------------------------------
+
+### 🧩 **Challenge #1** – Try a Different Color Scheme
+
+Replace `plasma` with another palette (e.g., `viridis`, `magma`, or `cividis`). Which one feels the most readable? Why?
+
+```{r}
+palette = magma
+```
+
+Document your reasoning in a comment above your code.
+
+------------------------------------------------------------------------
+
+## 🧮 Manual Styling with Interpolation
+
+Lets see the min and max of median income
+
+```{r}
+min(hi_median_income$estimate, na.rm = TRUE)
+max(hi_median_income$estimate, na.rm = TRUE)
+```
+
+What does this look like with other data viz?
+
+```{r}
+ggplot(hi_median_income, aes(x = estimate)) +
+  geom_histogram(fill = "steelblue", color = "black") +
+  theme_minimal()
+  
+```
+
+```{r}
+hi_map |>
+  add_fill_layer(
+    id = "hi_tracts",
+    source = hi_median_income,
+    fill_color = interpolate(
+      column = "estimate",
+      values = c(20000, 250000),
+      stops = c("lightblue", "darkblue"),
+      na_color = "lightgrey"
+    ),
+    fill_opacity = 0.5
+  ) |>
+  add_legend(
+    "Median Income in Hawaii",
+    values = c(20000, 250000),
+    colors = c("lightblue", "darkblue")
+  )
+```
+
+------------------------------------------------------------------------
+
+## 🔢 Categorical Styling
+
+In contrast to smooth gradients, **classified (categorical) color scales** divide your data into clear buckets. This approach is especially helpful when:
+
+-   You want to simplify complex data
+-   The audience needs clear takeaways (e.g., policy decisions, eligibility zones)
+-   You’re emphasizing **differences** between areas
+
+Instead of saying “this place is a bit older,” a categorical map might say “this tract is in the highest 20%. for median income” This clarity is powerful — but it also means you’re drawing visual boundaries that might not exist in reality.
+
+As a cartographer, **you are making choices that influence interpretation**. Use this power carefully.
+
+When designing categorical maps: - Choose palettes that are **visually distinct** (e.g., `RColorBrewer::brewer.pal()`) - Keep the number of categories reasonable (usually 4–7) - Match color progression to the narrative — e.g., darker = more intense
+
+> 🎨 A good map doesn’t just show data — it **communicates purpose** through design.
+
+Here’s how we apply quantile classification to Hawaii's Median Income:
+
+```{r}
+q_class <- step_quantile(
+  data = hi_median_income,
+  column = "estimate",
+  n = 5,
+  colors = RColorBrewer::brewer.pal(5, "PRGn")
+)
+
+hi_map |>
+  add_fill_layer(
+    id = "hi_tracts",
+    source = hi_median_income,
+    fill_color = q_class$expression,
+    fill_opacity = 0.5
+  ) |>
+  add_legend(
+    "Median Income in Hawaii",
+    values = get_legend_labels(q_class, digits = 0, suffix = " $"),
+    colors = get_legend_colors(q_class),
+    type = "categorical"
+  )
+```
+
+------------------------------------------------------------------------
+
+### 🧩 **Challenge #2** – Classify Differently
+
+Let’s apply your design instincts!
+
+Try switching from `step_quantile()` to one of the following:
+
+-   `step_equal_interval()` – evenly spaced numeric breaks
+-   `step_jenks()` – natural breaks that minimize variance within groups
+
+Type `?step_quantile` in your console to see definitions
+
+How does your choice affect the message your map conveys?
+
+💬 *What looks more balanced? Which palette aligns with your intended story?*
+
+Write 1–2 sentences reflecting on the **cartographic message** your choices imply.
+
+------------------------------------------------------------------------
+
+## Question: What is the poverty line for a household in Hawaii?
+
+Can we create a map that only shows above/below the poverty line
+
+```{r}
+hi_median_income <- hi_median_income |>
+  mutate(
+    poverty_flag = ifelse(estimate < 30000, "Below Poverty Line", "Above Poverty Line")
+  )
+```
+
+```{r}
+poverty_colors <- c("Below Poverty Line" = "#d73027", "Above Poverty Line" = "#1a9850")
+
+mapboxgl(bounds = hi_median_income) |>
+  add_fill_layer(
+    id = "hi_tracts",
+    source = hi_median_income,
+    fill_color = match_expr(
+      column = "poverty_flag",
+      values = names(poverty_colors),
+      stops = unname(poverty_colors)
+    ),
+    fill_opacity = 0.6
+  ) |>
+  add_legend(
+    "Median Income Status",
+    values = names(poverty_colors),
+    colors = unname(poverty_colors),
+    type = "categorical"
+  )
+
+
+```
+
+## Question: How else can we think about the poverty line and map?
+
+Hints : <https://livingwage.mit.edu/states/15>, <https://unitedforalice.org/hawaii>
+
+### 🧩 **Challenge #3** – Classify Differently
+
+Make a binary map, two colors, representing above and below a threshold of median income that you determine based on an outside source like the ones hinted above
+
+## ✨ Add Interactivity
+
+```{r}
+hi_median_income$popup <- glue("<strong>GEOID: </strong>{hi_median_income$GEOID}<br><strong>Median Income: </strong>{hi_median_income$estimate}")
+
+hi_map |>
+  add_fill_layer(
+    id = "hi_tracts",
+    source = hi_median_income,
+    fill_color = interpolate(
+      column = "estimate",
+      values = c(20000, 250000),
+      stops = c("lightblue", "darkblue"),
+      na_color = "lightgrey"
+    ),
+    fill_opacity = 0.5,
+    popup = "popup",
+    tooltip = "estimate",
+    hover_options = list(
+      fill_color = "yellow",
+      fill_opacity = 1
+    )
+  ) |>
+  add_legend(
+    "Median Income in Hawaii",
+    values = c(20000, 250000),
+    colors = c("lightblue", "darkblue")
+  )
+```
+
+------------------------------------------------------------------------
+
+### 🧩 **Challenge #4** – Customize a Tooltip
+
+Make your map more personal and informative!
+
+Instead of just `estimate`, add other descriptive info in your popup. For example, use `NAME` (tract name) or `GEOID` along with the estimate.
+
+```{r}
+hi_median_income$popup <- glue(
+  "<strong>Tract:</strong> {hi_median_income$NAME}<br><strong>Median income:</strong> {hi_median_income$estimate}"
+)
+```
+
+Bonus: Try replacing `fill_color = "yellow"` with a color of your choice that aligns better with your map’s aesthetic.
+
+> 💡 Cartographic design is about more than color — it’s about **clarity, context, and care** in visual choices.
+
+------------------------------------------------------------------------
+
+## 🌟 Challenge #5 – Your Own Data!
+
+Load median income, rent, or internet access for a different state using `tidycensus`. Here are a few suggestions: Use whatever state and variable you would like. You can also type this prompt into chat gpt: "what is the census code using tidycensus in R for median age?". It will most likely give you the correct variable code
+
+| Variable   | Description              |
+|------------|--------------------------|
+| B01002_001 | Median age               |
+| B25077_001 | Median home value        |
+| B28002_004 | Households with internet |
+
+#### California Example
+
+```{r}
+# Example: Median income in California
+ca_income <- get_acs(
+  geography = "tract",
+  variables = "B19013_001",
+  state = "CA",
+  year = 2023,
+  geometry = TRUE
+)
+
+ca_scale <- interpolate_palette(
+  data = ca_income,
+  column = "estimate",
+  method = "equal",
+  n = 4,
+  palette = viridisLite::viridis
+)
+
+mapboxgl(bounds = ca_income) |>
+  add_fill_layer(
+    id = "ca_tracts",
+    source = ca_income,
+    fill_color = ca_scale$expression,
+    fill_opacity = 0.5
+  ) |>
+  add_legend(
+    "Median income in California",
+    values = get_legend_labels(ca_scale, digits = 0, prefix = "$"),
+    colors = get_legend_colors(ca_scale),
+    type = "continuous"
+  )
+
+```
+
+🔍 Try: - Changing the variable to median home value- Switching the state (e.g., "HI", "NY", "TX") - Using a different styling function
+
+------------------------------------------------------------------------
+
+## ✅ Summary
+
+You’ve now:
+
+-   Built your first interactive map with `mapgl`
+-   Explored **color palettes**, **classifications**, and **interactivity**
+-   Experimented with **continuous vs categorical** styling
+-   Learned how to **guide your reader** with popups and hover design
+
+🎯 You’re on your way to designing thoughtful, expressive cartographic products.
+
+Save and push your.qmd file to github to earn credit for the challenges!

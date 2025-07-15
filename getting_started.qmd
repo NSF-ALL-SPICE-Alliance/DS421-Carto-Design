@@ -1,0 +1,197 @@
+---
+title: "Getting Started with R, RStudio, and GitHub for DS421"
+author: "DS421: Cartographic Design"
+date: "07/08/2025"
+format:
+  html:
+    toc: true
+    code-fold: true
+    theme: minty
+    css: styles.css
+---
+
+## 📦 Step 1: Install / Update R
+
+1. Visit the official R website: [https://cran.r-project.org](https://cran.r-project.org)
+2. Click **Download R for (your OS)** — choose Windows, macOS, or Linux
+3. Follow the installer instructions
+
+> ✅ Confirm installation by opening R and typing `version`
+
+
+## 🧰 Step 2: Install / Update RStudio
+
+1. Go to [https://posit.co/download/rstudio-desktop/](https://posit.co/download/rstudio-desktop/)
+2. Download the free version of **RStudio Desktop**
+3. Install and open RStudio
+
+> ✅ RStudio should automatically detect your R installation
+
+
+## 🐙 Step 3: Create / Update your GitHub Account
+
+1. Navigate to [https://github.com](https://github.com)
+2. Sign up using your school or personal email
+3. Choose a username you'll use professionally (e.g., `csmith-ds421`)
+4. Verify your email and log in
+
+> ✅ Tip: Add a profile picture and short bio (e.g., "Cartographic Design student")
+
+
+## 📁 Step 4: Create a Repository for Class
+
+1. On GitHub, click the **+** icon > **New repository**
+2. Name it: `DS421-Carto-Design`
+3. Add a short description: “Projects for Cartographic Design (DS421)”
+4. Set visibility to **Public** or **Private** (your choice)
+5. ✅ **Check** the box to add a `README.md`
+6. Click **Create repository**
+
+> 📎 Your repo URL will look like: `https://github.com/yourusername/DS421-Carto-Design`
+
+
+## 🔗 Step 5: Check for / Install Git & Link GitHub to RStudio
+
+### Check for Git
+
+#### For macOS users
+Open RStudio and use the **Terminal** tab (bottom left panel). Type:
+
+```bash
+which git
+```
+If you see something like `/usr/bin/git`, you're good! If not, install [Xcode Command Line Tools](https://developer.apple.com/xcode/resources/).
+
+#### For Windows users
+In the **Terminal** tab in RStudio, type:
+
+```bash
+where git
+```
+If no result is shown, download Git for Windows: [https://git-scm.com/download/win](https://git-scm.com/download/win)
+
+
+### Configure Git
+Run the following in the RStudio Terminal (replace with your GitHub name/email):
+
+```bash
+git config --global user.name "Jane Doe"
+git config --global user.email janedoe@example.com"
+```
+
+Check your setup:
+
+```bash
+git config --list --global
+```
+
+### Generate and Store a GitHub PAT
+A PAT (Personal Access Token) is needed to push to GitHub securely.
+
+1. In the Console tab (next to Terminal):
+
+```r
+install.packages("usethis")
+usethis::create_github_token()
+```
+2. This opens a GitHub page. Name the token (e.g. `ds421-laptop`) and click **Generate token**.
+3. Copy the token to your clipboard (you won't be able to see it again).
+
+4. Back in the Console:
+```r
+gitcreds::gitcreds_set()
+```
+5. Paste your token when prompted.
+
+6. Check that everything works:
+```r
+usethis::git_sitrep()
+```
+
+> ✅ You should see your GitHub username and confirmation that credentials are set.
+
+
+## 🧮 Step 6: Create a New RStudio Project Linked to GitHub
+
+1. Open RStudio
+2. Go to **File > New Project**
+3. Choose **Version Control** > **Git**
+4. Paste your GitHub repo URL (e.g., `https://github.com/yourusername/DS421-Carto-Design`)
+5. Choose a local folder on your computer to store the project
+6. Click **Create Project**
+
+> 🧠 You’ve now cloned your repo and linked it to RStudio.
+
+You should now see the `README.md` file in your RStudio Files pane.
+
+
+## 🗺️ Step 7: Install `mapgl` and Set Up Mapbox Token
+
+The `mapgl` package allows you to create beautiful interactive maps using Mapbox. To use it, you'll need a **Mapbox access token**.
+
+### Install `mapgl`
+```r
+install.packages("mapgl")
+```
+
+### Set up Mapbox Access Token
+
+
+> 💡 Please **do not** put any credit card info
+
+### Store Your Token in R
+In the Console:
+```r
+usethis::edit_r_environ()
+```
+
+This opens your `.Renviron` file. Add the line:
+```
+MAPBOX_PUBLIC_TOKEN='pk.eyJ1IjoiY29ubm9yZmx5bm4iLCJhIjoiY2x5cWFtZzk0MGU4MzJqb2F0a2w1bGJkZiJ9.fB81ysj5JOrG16upKvzk4A'
+```
+Save and restart RStudio. The `mapgl()` function will now automatically detect your token.
+
+> 📘 More info: [Getting Started with mapgl](https://walker-data.com/mapgl/articles/getting-started.html)
+
+
+## 🔄 Step 8: Make a Test Commit
+
+1. Create a new R script: **File > New File > R Script**
+2. Add the following code to test your `mapgl` installation:
+
+```r
+library(mapgl)
+
+mapboxgl()
+```
+
+3. Save the script as `mapgl_intro.R`
+4. Run the script — a globe should appear in the Viewer pane like this:
+
+![Output from mapgl() showing the globe](images/mapgl-globe-preview.png)
+
+5. In the **Git** tab (top-right pane), check the boxes next to the new files
+6. Click **Commit**, write a short message like `Initial mapgl test`, and click **Commit**
+7. Click **Push** to upload your changes to GitHub
+
+> 🧪 Check your GitHub repo — your script should be visible online.
+
+
+## 🧭 You're All Set!
+
+You now have:
+- ✅ R and RStudio installed
+- ✅ Git and GitHub connected to RStudio
+- ✅ A GitHub repository cloned as a local R project
+- ✅ Mapbox + mapgl ready for interactive mapping
+- ✅ A working commit + push setup
+
+
+## 🚀 Next Steps
+- Learn basic `git` workflows in RStudio
+- Explore R Markdown and Quarto documents for map projects
+- Clone example repos from classmates or the instructor
+
+---
+
+Need help? Reach out during lab or post in the course GitHub Discussions!
