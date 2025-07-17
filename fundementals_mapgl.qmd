@@ -102,7 +102,7 @@ continuous_scale <- interpolate_palette(
   column = "estimate",
   method = "equal",
   n = 5,
-  palette = viridis
+  palette = magma
 )
 
 hi_map |>
@@ -243,28 +243,28 @@ Can we create a map that only shows above/below the poverty line
 ```{r}
 hi_median_income <- hi_median_income |>
   mutate(
-    poverty_flag = ifelse(estimate < 30000, "Below Poverty Line", "Above Poverty Line")
+    mit_threshold = ifelse(estimate < 107689, "Below Line", "Above Line")
   )
 ```
 
 ```{r}
-poverty_colors <- c("Below Poverty Line" = "#d73027", "Above Poverty Line" = "#1a9850")
+mit_colors <- c("Below Line" = "#d73027", "Above Line" = "#1a9850")
 
 mapboxgl(bounds = hi_median_income) |>
   add_fill_layer(
     id = "hi_tracts",
     source = hi_median_income,
     fill_color = match_expr(
-      column = "poverty_flag",
-      values = names(poverty_colors),
-      stops = unname(poverty_colors)
+      column = "mit_threshold",
+      values = names(mit_colors),
+      stops = unname(mit_colors)
     ),
     fill_opacity = 0.6
   ) |>
   add_legend(
     "Median Income Status",
-    values = names(poverty_colors),
-    colors = unname(poverty_colors),
+    values = names(mit_colors),
+    colors = unname(mit_colors),
     type = "categorical"
   )
 
@@ -282,7 +282,9 @@ Make a binary map, two colors, representing above and below a threshold of media
 ## ✨ Add Interactivity
 
 ```{r}
-hi_median_income$popup <- glue("<strong>GEOID: </strong>{hi_median_income$GEOID}<br><strong>Median Income: </strong>{hi_median_income$estimate}")
+hi_median_income$popup <- glue(
+  "<strong>Tract:</strong> {hi_median_income$NAME}<br><strong>Median income:</strong> {hi_median_income$estimate}"
+)
 
 hi_map |>
   add_fill_layer(
@@ -338,6 +340,10 @@ Load median income, rent, or internet access for a different state using `tidyce
 | B01002_001 | Median age               |
 | B25077_001 | Median home value        |
 | B28002_004 | Households with internet |
+
+```{r}
+acs_vars <- load_variables(2022, "acs5", cache = TRUE)
+```
 
 #### California Example
 
