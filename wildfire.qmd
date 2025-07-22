@@ -56,6 +56,16 @@ In this tutorial, we use the **7-day LANDSAT active fire shapefile** and its cor
 
 ## 📍 Read Point-Based Fire Detection Shapefile
 
+On this website: <https://firms.modaps.eosdis.nasa.gov/usfs/active_fire/#firms-shapefile:~:text=Real%2DTime%20data.-,Shapefiles,-Active%20fire%20detection> under Shapefiles, download the LANDSAT 30M USA (Conterminous) and Hawaii 7 day zip file
+
+-   Click on the zip file you downloaded to unzip it
+
+-   Create a data folder within DS421-Carto-Design and move the
+
+-   Move the unzipped file (will be a folder with 5 files within it) into the new data folder you created
+
+-   Now you will be able to read the file in with the code below
+
 ```{r}
 wildfire_shp_data <- st_read(here("data/LANDSAT_USA_contiguous_and_Hawaii_7d/LANDSAT_USA_contiguous_and_Hawaii_7d.shp"))
 ```
@@ -187,6 +197,12 @@ animate(
 ------------------------------------------------------------------------
 
 ## 🛡️ Load and Visualize KML Fire Area Polygons
+
+-   Download the FirespotArea_LANDSAT_USA_contiguous_and_Hawaii_7d.kmz from here: <https://firms.modaps.eosdis.nasa.gov/usfs/active_fire/#firms-shapefile:~:text=Fire%20detection%20location-,Active%20fire%20detection%20footprint%20and%20centroid%20KMLs/KMZs,-Download%20MODIS%2C%20VIIRS> under **Active fire detection footprint and centroid KMLs/KMZs download the LANDSAT 30m** USA (Conterminous) and Hawaii 7d
+
+-   Move the .kmz file into your data folder
+
+-   The code below will unzip it, move it into a fire_kml file directory that contains a kml file that is readable in R
 
 ```{r}
 unzip("data/FirespotArea_LANDSAT_USA_contiguous_and_Hawaii_7d.kmz", exdir = "data/fire_kml")
