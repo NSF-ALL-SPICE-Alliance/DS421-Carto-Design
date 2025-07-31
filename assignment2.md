@@ -1,6 +1,6 @@
 ## Assignment 2 🌐 
 
-Can you write an R script to create a shiny app with the functionality shown in the vide below utilizing the county_data.gpkg following packages
+Can you write an R script to create a shiny app with the functionality shown in the vide below utilizing the [county_data.gpkg](https://github.com/NSF-ALL-SPICE-Alliance/DS421-Carto-Design/blob/main/data/county_data.gpkg) and the following packages
 
 ```r
 library(shiny)
@@ -12,6 +12,7 @@ library(tidyverse)
 ```
 
 
+Make sure to utilize the [mapgl package documentation and examples](https://walker-data.com/mapgl/) to help you
 
 
 
