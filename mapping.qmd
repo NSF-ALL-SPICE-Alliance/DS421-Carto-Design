@@ -280,3 +280,5 @@ Unacceptable commit messages:
 #### Challenge 2
 
 [Follow this guide](https://walker-data.com/mapgl/articles/map-design.html#bivariate-styling:~:text=80-,Bivariate%20styling,-Bivariate%20maps%20visualize) to make a bivariate map of median age and income for your chosen county
+
+Answers
