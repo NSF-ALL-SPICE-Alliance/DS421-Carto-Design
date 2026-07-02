@@ -1,0 +1,282 @@
+---
+title: "Mapping Data with TidyCensus"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(ggiraph)
+library(mapview)
+library(leaflet)
+library(mapgl)
+options(scipen = 999)
+```
+
+### Welcome!
+
+This notebook is all about using the most popular/modern packages to map data in R. They all follow the same style but have their unique functions and strengthes/weaknesses. With these options you should able to design almost any map you can think of. There are many more packages not included here but this is a great start. Here's the documentation for each:
+
+- [mapview](https://r-spatial.github.io/mapview/)
+
+- [ggplot](https://ggplot2.tidyverse.org/reference/geom_map.html)
+
+- [ggiraph](https://davidgohel.github.io/ggiraph/reference/geom_map_interactive.html)
+
+- [leaflet](https://rstudio.github.io/leaflet/index.html)
+
+- [mapgl](https://walker-data.com/mapgl/)
+
+If our collective dream is to make maps, we're gonna need some data. There are several file types and data formats that need a few key tricks to "clean" in order to map in R but we'll get to that later. For now let's use the awesome [tidycensus](https://walker-data.com/tidycensus/) package to bring in some census data straight to R in a format that is map-ready.
+
+### API Key
+
+First, you'll need to set up an api key though:\
+A key can be obtained for free from <https://api.census.gov/data/key_signup.html>.
+
+Then paste the api key into you `.Renviron` by typing in the console:
+
+`usethis::edit_r_environ()`
+
+This will open a file for you to paste your key into exactly like this:
+
+CENSUS_API_KEY='Your Key Here'
+
+Save the file and **RESTART R** for the key to work
+
+### Load in Data
+
+Now, we can load our data in! Let's start with a median income (*code B19013_001*) for Honolulu county
+
+```{r}
+hnl <- get_acs(
+  state = "HI",
+  county = "Honolulu",
+  geography = "tract",
+  variables = "B19013_001",
+  geometry = TRUE,
+  year = 2024
+) |>
+  dplyr::filter(GEOID != "15003981200") # northwestern HI island filtered out
+
+```
+
+Great, 329 census tracts with estimates of median income. Before mapping let's use ggplot to look at median income distribution.
+
+### Plot Data
+
+```{r}
+ggplot(data = hnl, aes(x = estimate)) +
+  geom_histogram()
+```
+
+We can dress this up a bit
+
+```{r}
+ggplot(data = hnl, aes(x = estimate)) +
+  geom_histogram(color = "black", bins = 50) +
+  theme_minimal() + 
+  geom_vline(xintercept = median(hnl$estimate, na.rm = TRUE), col ="steelblue") +
+  labs(x = "Median Income is $USD")
+```
+
+```{r}
+ggplot(data = hnl, aes(x = estimate)) +
+  geom_area(stat = "density", fill = "steelblue") +
+  theme_minimal() +
+  labs(x = "Median Income is $USD")
+```
+
+Looks like a fairly normal distribution around \$120,000. We can get some more stats
+
+```{r}
+summary(hnl$estimate)
+```
+
+AI Suggestion: **ECDF (empirical cumulative distribution)** — great for answering "what % of tracts are below \$X?"
+
+```{r}
+ggplot(hnl, aes(x = estimate)) +
+  stat_ecdf() +
+  theme_minimal() +
+  labs(y = "Cumulative proportion of tracts",
+       x = "Median Income is $USD")
+```
+
+Now that we have a good understanding of the distribution of our Median Income variable, let's make some maps. We'll start with the simplest map for each package then improve it.
+
+### Map Data
+
+#### *Mapview*
+
+Mapview is awesome because you can get a nice, interactive map in one line of code (4 words)
+
+```{r}
+mapview(hnl, zcol = "estimate")
+```
+
+```{r}
+mapview(
+  hnl, 
+  zcol = "estimate", 
+  col.regions = viridisLite::magma(100),
+  layer.name = "Median Income ($)",
+  alpha.regions = 0.8,
+  label = hnl$NAME
+)
+```
+
+You can also map breweries as a bonus
+
+```{r}
+mapview(breweries)
+```
+
+#### ggplot
+
+ggplot is is the most common plotting package in R for a reason. We used it above for other visualization, let's use it for mapping
+
+```{r}
+ggplot(data = hnl, aes(fill = estimate)) + 
+  geom_sf()
+```
+
+```{r}
+ggplot(data = hnl, aes(fill = estimate)) + 
+  geom_sf(color = "white", linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "viridis", 
+    labels = scales::label_dollar(),
+    na.value = "grey90"
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Median Household Income",
+    subtitle = "By Census Tract",
+    fill = "Median Income"
+  ) +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold")
+  )
+```
+
+Very Nice, we can also make these interactive with ggiraph
+
+```{r}
+medincome_map <- ggplot(data = hnl, aes(fill = estimate)) +
+  geom_sf_interactive(
+    aes(tooltip = paste0("Estimate: $", estimate, "\nTract: ", NAME))
+  ) +
+  scale_fill_viridis_c(option = "magma") +
+  theme_minimal()
+
+girafe(
+  ggobj = medincome_map,
+  options = list(
+    opts_zoom(min = 1, max = 5)
+  )
+)
+```
+
+#### Leaflet
+
+Leaflet has been a long-time staple in the R mapping community but takes a bit more code to look nice. No simple `leaflet(hnl)`
+
+```{r}
+pal <- colorNumeric("magma", domain = hnl$estimate, na.color = "transparent")
+
+leaflet(hnl) |>
+  addPolygons(
+    fillColor = ~pal(estimate),
+    fillOpacity = 0.8,
+    color = "white",
+    weight = 0.5,
+    label = ~paste0(NAME, ": $", scales::comma(estimate))
+  ) |>
+  addLegend(pal = pal, values = ~estimate, title = "Median Income", opacity = 0.8)
+```
+
+#### Mapgl
+
+mapgl is the most recent package we are using built by the very talented GIS master Kyle Walker. It also requires a bit more code but is highly modern, functional, and customizable
+
+```{r}
+# Automatic continuous scale with equal breaks
+continuous_scale <- interpolate_palette(
+  data = hnl,
+  column = "estimate",
+  method = "equal",
+  n = 5,
+  palette = viridisLite::cividis
+)
+
+mapboxgl(bounds = hnl) |>
+  add_fill_layer(
+    id = "income_tracts",
+    source = hnl,
+    fill_color = continuous_scale$expression,
+    fill_opacity = 0.8
+  ) |>
+  add_legend(
+    "Median Household Income",
+    values = get_legend_labels(continuous_scale, digits = 0),
+    colors = get_legend_colors(continuous_scale),
+    type = "continuous",
+    position = "bottom-right",
+    width = "220px"
+  )
+```
+
+### Challenges
+
+Please complete the following challenges with code below the instructions, save your file, commit, and "push" to github. We can cover how to do this in class.
+
+Acceptable commit messages:
+
+- "Mapping in R is all-time"
+
+- " I want to map in R forever"
+
+- "Amber and Connor have taught me everything I know"
+
+Unacceptable commit messages:
+
+- "AI did this for me"
+
+- "commit"
+
+#### Challenge 1
+
+- Pick a county in the U.S. (not honolulu)
+
+- Read in data for median age with `get_acs()`
+
+  - `median age = "B01002_001"`
+
+- Make a histogram or area plot with `ggplot()`
+
+- Note the min, max, mean, median and quartiles with `summary()`
+
+- Make a map of median age by census tract for your chosen county with ggplot
+
+- Read in data for median income for the same county you chose
+
+  ```         
+   median_income = "B19013_001"
+  ```
+
+- Make a histogram or area plot with `ggplot()`
+
+- Note the min, max, mean, median and quartiles with `summary()`
+
+- Make a map of median income by census tract for your chosen county with `mapview()`
+
+- Make a scatterplot with `ggplot` showing the relationship between median age and median income between census tracts for your chosen county
+
+#### Challenge 2
+
+[Follow this guide](https://walker-data.com/mapgl/articles/map-design.html#bivariate-styling:~:text=80-,Bivariate%20styling,-Bivariate%20maps%20visualize) to make a bivariate map of median age and income for your chosen county
