@@ -27,6 +27,8 @@ library(here)
 library(tidycensus)
 library(ggpubr)
 library(plotly)
+library(mapview)
+library(leaflet)
 ```
 
 #### View Census Variables
@@ -47,7 +49,7 @@ raw_vars <- c(
 )
 
 # Labels for Shiny dropdown (key = column name in wide data)
-oahu_choices <- c(
+variable_choices <- c(
   "Median Household Income" = "median_income",
   "Percent with Bachelor's Degree" = "pct_bachelors",
   "Median Gross Rent" = "median_gross_rent"
@@ -79,89 +81,13 @@ hawaii_data <- hawaii_data_raw |>
   st_as_sf()
 ```
 
-#### Build Shiny App
+## 🧩 Challenge 1
+
+Can you make a histogram of median rent colored by county. Hint: You will have to make a new column called county based on the values in the NAME column
 
 ```{r}
-ui <- page_sidebar(
-  title = "Hawaii Census Map",
-  sidebar = sidebar(
-    selectInput("var", "Choose a variable to map:", choices = oahu_choices)
-  ),
-  card(
-    full_screen = TRUE,
-    maplibreOutput("map")
-  )
-)
-
-server <- function(input, output, session) {
-  output$map <- renderMaplibre({
-    # 1. Get the selected column from hawaii_data
-    selected_data <- hawaii_data |> 
-      mutate(var_value = .data[[input$var]])
-
-    # 2. Use interpolate_palette() with a good break method
-    continuous_scale <- interpolate_palette(
-      data = selected_data,
-      column = "var_value",
-      method = "equal",  # Or "quantile"
-      n = 4,              # Reduce to 4 breaks to avoid crowding
-      palette = viridisLite::viridis
-    )
-
-    # 3. Format legend labels using prefix/suffix
-    legend_labels <- switch(input$var,
-      "median_income" = get_legend_labels(continuous_scale, digits = 0, prefix = "$"),
-      "pct_bachelors" = get_legend_labels(continuous_scale, digits = 0, suffix = "%"),
-      "median_gross_rent" = get_legend_labels(continuous_scale, digits = 0, prefix = "$"),
-      get_legend_labels(continuous_scale, digits = 0)  # fallback
-    )
-
-    # 4. Map with scale expression and legend
-    maplibre(style = carto_style("positron")) |>
-      fit_bounds(selected_data) |>
-      add_fill_layer(
-        id = "tracts",
-        source = selected_data,
-        fill_color = continuous_scale$expression,
-        fill_opacity = 0.75
-      ) |>
-      add_legend(
-        legend_title = names(oahu_choices)[oahu_choices == input$var],
-        values = legend_labels,
-        colors = get_legend_colors(continuous_scale),
-        type = "continuous"
-      )
-  })
-}
-
-
-shinyApp(ui, server)
 
 ```
-
-#### ggplot
-
-Let's see if there is a relationship between our census variables by creating a scatter plot
-
-```{r}
-scatter_plot <- ggplot(hawaii_data, aes(x = median_income, y = median_gross_rent)) +
-  geom_point() +
-  geom_smooth() +
-  stat_cor(output.type = "text", label.sep = '\n') +
-  theme_minimal()
-
-scatter_plot
-```
-
-Now lets make it interactive
-
-```{r}
-ggplotly(scatter_plot)
-```
-
-## 🧩 Challenge 1 
-
-Can you add the functionality to your shiny app (new panel) that allows users to pick two census variables to plot on an interactive scatter plot using `ggplotly()` and `stat_cor()`
 
 ```{r}
 
@@ -169,7 +95,80 @@ Can you add the functionality to your shiny app (new panel) that allows users to
 
 ## 🧩 Challenge 2
 
-Can you create a shiny app using your LANDSAT_USA_contiguous_and_Hawaii_7d.csv in the data folder that allows users to filter the map by confidence. For example, the user can select from a side dropdown to only show *high* confidence fires, *medium* confidence fires, or *low* confidence fires. Also add a date slider so users can toggle the map by date. Bonus: Can you add a heatmap layer users can toggle on and off?
+A. Can you make a scatterplot showing the relationship between median income and median gross rent. Can you use the `stat_cor()`function to show a correlation coefficient and p value
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+B. Can you make this scatterplot interactive with `ggplotly()`
+
+```{r}
+
+```
+
+## 🧩 Challenge 3
+
+Can you make a choropleth map of Hawaii using `mapview()` that shows median rent by census tract
+
+```{r}
+
+```
+
+#### Building a Shiny App
+
+We have these 3 variables in hawaii_data, it would be nice if users can select a variable from a dropdown: [Introducing Shiny](https://shiny.posit.co/)
+
+There are many mapping packages we can use with Shiny. The simplest for now is `mapview`. It is good to note that the mapgl package is also designed specifically to [work with advanced shiny apps](https://walker-data.com/mapgl/articles/shiny.html).
+
+```{r}
+
+ui <- fluidPage(
+  titlePanel("Hawaii Census Map"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("var", "Choose a variable to map:", choices = variable_choices)
+    ),
+    mainPanel(
+      leafletOutput("map", height = "700px")
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  output$map <- renderLeaflet({
+    mapview(
+      hawaii_data,
+      zcol = input$var,
+      layer.name = names(oahu_choices)[oahu_choices == input$var]
+    )@map
+  })
+}
+
+shinyApp(ui, server)
+```
+
+## 🧩 Challenge 4
+
+Can you create a shiny app using your LANDSAT_USA_contiguous_and_Hawaii_7d.csv in the data folder that allows users to filter the map by confidence. For example, the user can select from a side dropdown to only show *high* confidence fires, *medium* confidence fires, or *low* confidence fires. Do not use AI for this and use the example above. AI Bonus: Add a date slider so users can toggle the map by date. Can you add a heatmap layer users can toggle on and off?
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+## 🧩 Challenge 5
+
+Can you add the functionality to your census shiny app (new panel) that allows users to pick two census variables to plot on an interactive scatter plot using `ggplotly()` and `stat_cor()`
+
+We should remain careful about our use/potential dependence on AI for coding but for cases like these where we have built all the individual parts, AI can be really helpful in putting them together in a sleek design on a shiny app.
 
 ```{r}
 
