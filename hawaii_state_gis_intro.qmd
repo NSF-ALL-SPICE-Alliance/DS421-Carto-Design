@@ -1,0 +1,118 @@
+---
+title: "Intro to Hawaii State GIS Data"
+format: html
+editor: visual
+---
+
+### Welcome! 
+
+The [Hawaii State GIS Program](https://geoportal.hawaii.gov/) is an awesome resource for us to be aware of as GIS analysts in Hawaii. Their mission is "Improving efficiency and effectiveness in government decision-making through education, facilitation, and coordination of GIS mapping technologies."
+
+In a GIS Analyst position here, you may often be combining data that is relevant to your work with data from the HI State GIS Program. So, today we will
+
+- get familiar with the resource
+
+-  plot agricultural land use data together
+
+- lastly you will each pick one dataset to map and share towards the end of the class
+
+### Ag Land Use Data
+
+We see several options to download our [Ag Land Use Data](https://geoportal.hawaii.gov/datasets/342ee6c7547f45ddbfc07caf4ca2887d_19/explore?location=20.566850%2C-157.274800%2C7), I would advise downloading the `.geojson` whenever available since they are the easiest to work with in R. Keep in mind we do have experience with almost all of the other file type options (csv, shapefile, kml) from our fire analysis notebook.
+
+```{r}
+library(sf)
+library(here)
+library(tidyverse)
+library(mapview)
+library(forcats)
+options(scipen = 99)
+```
+
+Read in data with `st_read()`
+
+```{r}
+ag_lands <- st_read(here("data/2020_Agricultural_Land_Use.geojson"))
+```
+
+How many unique crops are there in the crops_2020 column
+
+```{r}
+unique(ag_lands$crops_2020)
+```
+
+We can count the unique values with the table function
+
+```{r}
+table(ag_lands$crops_2020)
+```
+
+Let's make a bar chart by count
+
+```{r}
+ggplot(data = ag_lands, aes(y = crops_2020)) +
+  geom_bar()
+```
+
+We can order and clean up
+
+```{r}
+ggplot(data = ag_lands, aes(y = fct_rev(fct_infreq(crops_2020)))) +
+  geom_bar() +
+  theme_minimal() +
+  labs(y = "", 
+       x = "Count")
+```
+
+Let's plot by acreage
+
+```{r}
+acreage_by_type <- ag_lands %>%
+  group_by(crops_2020) %>%
+  summarize(total_acreage = sum(acreage, na.rm = TRUE))
+```
+
+```{r}
+ggplot(data = acreage_by_type, aes(y = reorder(crops_2020, total_acreage), x = total_acreage)) +
+  geom_col() +
+  labs(y = "", 
+       x = "acres") +
+  theme_minimal()
+```
+
+What about without pasture?
+
+```{r}
+acreage_by_type_no_pasture <- acreage_by_type |> 
+  filter(crops_2020 != "Pasture")
+```
+
+```{r}
+ggplot(data = acreage_by_type_no_pasture, aes(y = reorder(crops_2020, total_acreage), x = total_acreage)) +
+  geom_col() +
+  labs(y = "", 
+       x = "acres") +
+  theme_minimal()
+```
+
+Let's Map!
+
+```{r}
+mapview(ag_lands, zcol = "crops_2020")
+```
+
+Let's change the color pallete
+
+```{r}
+library(colorspace)
+n <- length(unique(ag_lands$crops_2020))
+mapview(ag_lands, zcol = "crops_2020", col.regions = qualitative_hcl(n, palette = "Dark 3"))
+```
+
+### Your turn! 
+
+1.  Choose a dataset from the Hawaii State GIS Program
+2.  Explore the dataset
+3.  Create at least one ggplot() describing the dataset
+4.  Map it
+5.  Share with the class
