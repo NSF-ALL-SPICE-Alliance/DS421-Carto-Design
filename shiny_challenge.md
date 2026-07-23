@@ -1,4 +1,4 @@
-## Assignment 2 🌐 
+## Shiny Challenge 🌐 
 
 Can you write an R script to create a shiny app with the functionality shown in the video below utilizing the [county_data.gpkg](https://github.com/NSF-ALL-SPICE-Alliance/DS421-Carto-Design/blob/main/data/county_data.gpkg) (click download raw file on github after following the hyperlink)and the following packages. Please name this shiny_app_language.qmd and push to your github repository
 
